@@ -55,5 +55,5 @@ func main() {
 	}
 
 	router := routes.SetupRouter(database)
-	router.Run(":8089")
+	router.Run(":8080")
 }
