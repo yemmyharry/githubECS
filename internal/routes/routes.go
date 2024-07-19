@@ -1,14 +1,13 @@
-package main
+package routes
 
 import (
 	"github.com/gin-gonic/gin"
+	"githubECS/internal/repository"
 	"gorm.io/gorm"
 	"net/http"
 )
 
-func SetupRouter(db *gorm.DB) *gin.Engine {
-	r := gin.Default()
-
+func SetupRouter(r *gin.Engine, db *gorm.DB) {
 	r.POST("/discover", func(c *gin.Context) {
 		var json struct {
 			Query string `json:"query" binding:"required"`
@@ -17,9 +16,7 @@ func SetupRouter(db *gorm.DB) *gin.Engine {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
-		DiscoverRepos(json.Query)
+		repository.DiscoverRepos(json.Query, db)
 		c.JSON(http.StatusOK, gin.H{"status": "OK"})
 	})
-
-	return r
 }
