@@ -1,8 +1,9 @@
-package main
+package commit
 
 import (
 	"encoding/json"
 	"githubECS/models"
+	"gorm.io/gorm"
 	"io"
 	"log"
 
@@ -12,17 +13,17 @@ import (
 
 const commitURL = "https://api.github.com/repos/"
 
-func watchCommits() {
+func WatchCommits(db *gorm.DB) {
 	var repos []models.Repository
 	db.Find(&repos)
 
 	for _, repo := range repos {
 		log.Printf("Checking commits for repo: %s", repo.FullName)
-		checkCommits(repo.FullName)
+		checkCommits(repo.FullName, db)
 	}
 }
 
-func checkCommits(fullName string) {
+func checkCommits(fullName string, db *gorm.DB) {
 	resp, err := http.Get(commitURL + fullName + "/commits")
 	if err != nil {
 		log.Println("Error fetching commits:", err)
@@ -47,10 +48,10 @@ func checkCommits(fullName string) {
 
 	log.Printf("Parsed commits for repo %s: %+v", fullName, commits)
 
-	saveCommits(commits)
+	saveCommits(commits, db)
 }
 
-func saveCommits(commits []models.Commit) {
+func saveCommits(commits []models.Commit, db *gorm.DB) {
 	for _, commit := range commits {
 		result := db.Clauses(clause.OnConflict{
 			Columns:   []clause.Column{{Name: "sha"}},
