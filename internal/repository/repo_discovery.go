@@ -57,14 +57,27 @@ func DiscoverRepos(query string, db *gorm.DB) {
 
 func saveRepos(repos []models.Repository, db *gorm.DB) {
 	for _, repo := range repos {
+		repository := models.Repository{
+			FullName:        repo.FullName,
+			Description:     repo.Description,
+			URL:             repo.URL,
+			Language:        repo.Language,
+			ForksCount:      repo.ForksCount,
+			StarsCount:      repo.StarsCount,
+			OpenIssuesCount: repo.OpenIssuesCount,
+			WatchersCount:   repo.WatchersCount,
+			CreatedAt:       repo.CreatedAt,
+			UpdatedAt:       repo.UpdatedAt,
+		}
+
 		result := db.Clauses(clause.OnConflict{
 			Columns:   []clause.Column{{Name: "full_name"}},
 			DoNothing: true,
-		}).Create(&repo)
+		}).Create(&repository)
 		if result.Error != nil {
-			log.Printf("Error saving repository %+v: %s", repo, result.Error)
+			log.Printf("Error saving repository %+v: %s", repository, result.Error)
 		} else {
-			log.Printf("Saved repository %+v", repo)
+			log.Printf("Saved repository %+v", repository)
 		}
 	}
 }

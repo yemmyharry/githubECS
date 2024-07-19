@@ -26,5 +26,8 @@ func main() {
 	r := gin.Default()
 	routes.SetupRouter(r, database)
 
-	r.Run()
+	err = r.Run()
+	if err != nil {
+		return
+	}
 }
