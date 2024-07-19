@@ -14,7 +14,7 @@ import (
 func SetupRouter(r *gin.Engine, db *gorm.DB) {
 	r.POST("/search", func(c *gin.Context) {
 		query := c.Query("query")
-		repository.DiscoverRepos(query, db)
+		repository.FindRepos(query, db)
 		c.JSON(http.StatusOK, gin.H{"status": "OK"})
 	})
 

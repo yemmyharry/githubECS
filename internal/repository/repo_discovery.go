@@ -21,7 +21,7 @@ type RepoSearchResult struct {
 	Items []models.Repository `json:"items"`
 }
 
-func DiscoverRepos(query string, db *gorm.DB) {
+func FindRepos(query string, db *gorm.DB) {
 	if !checkRateLimit() {
 		return
 	}
