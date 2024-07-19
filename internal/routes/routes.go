@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -27,7 +28,7 @@ func SetupRouter(r *gin.Engine, db *gorm.DB) {
 		}
 
 		var repos []models.Repository
-		if err := db.Where("full_name ILIKE ? OR description ILIKE ?", "%"+full_name+"%", "%"+full_name+"%").Find(&repos).Error; err != nil {
+		if err := db.Where("full_name LIKE ? OR description LIKE ?", "%"+full_name+"%", "%"+full_name+"%").Find(&repos).Error; err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to search repositories"})
 			return
 		}
@@ -47,7 +48,7 @@ func SetupRouter(r *gin.Engine, db *gorm.DB) {
 		}
 
 		var repo models.Repository
-		if err := db.Where("full_name ILIKE ? OR description ILIKE ?", "%"+full_name+"%", "%"+full_name+"%").First(&repo).Error; err != nil {
+		if err := db.Where("full_name LIKE ? OR description LIKE ?", "%"+full_name+"%", "%"+full_name+"%").First(&repo).Error; err != nil {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Repository not found"})
 			return
 		}
@@ -62,6 +63,7 @@ func SetupRouter(r *gin.Engine, db *gorm.DB) {
 
 	r.GET("/search", func(c *gin.Context) {
 		language := c.Query("language")
+		language = strings.ToLower(language)
 		var repos []models.Repository
 		if err := db.Where("LOWER(language) = ?", language).Find(&repos).Error; err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to search repositories"})
