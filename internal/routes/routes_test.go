@@ -7,10 +7,10 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
+	"githubECS/internal/handlers"
+	"githubECS/models"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
-
-	"githubECS/models"
 )
 
 func setupTestDB() (*gorm.DB, error) {
@@ -27,7 +27,21 @@ func setupTestDB() (*gorm.DB, error) {
 
 func setupTestRouter(db *gorm.DB) *gin.Engine {
 	r := gin.Default()
-	SetupRouter(r, db)
+	r.POST("/search", func(c *gin.Context) {
+		handlers.SearchHandler(c, db)
+	})
+	r.GET("/repositories/:full_name", func(c *gin.Context) {
+		handlers.GetRepositoryHandler(c, db)
+	})
+	r.GET("/repositories/:full_name/commits", func(c *gin.Context) {
+		handlers.GetCommitsHandler(c, db)
+	})
+	r.GET("/search", func(c *gin.Context) {
+		handlers.SearchByLanguageHandler(c, db)
+	})
+	r.GET("/top", func(c *gin.Context) {
+		handlers.GetTopRepositoriesHandler(c, db)
+	})
 	return r
 }
 
