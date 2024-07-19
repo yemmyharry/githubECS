@@ -1,6 +1,7 @@
 package db
 
 import (
+	"githubECS/models"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
@@ -10,5 +11,6 @@ func Initialize(dsn string) (*gorm.DB, error) {
 	if err != nil {
 		return nil, err
 	}
+	db.AutoMigrate(&models.Repository{}, &models.Commit{})
 	return db, nil
 }
