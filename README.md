@@ -48,6 +48,7 @@ docker-compose up --build
 - **Get Commits for a Repository:** `GET /repositories/:full_name/commits`
 - **Search Repositories by Language:** `GET /search?language=<language>`
 - **Get Top N Repositories by Stars Count:** `GET /top?n=<number>`
+- **Reset Start Date for Commits:** `POST /reset_start_date?start_date=<start_date>`
 
 ### Example Requests
 
@@ -79,6 +80,12 @@ curl -X GET "http://localhost:8080/search?language=go"
 
 ```sh
 curl -X GET "http://localhost:8080/top?n=5"
+```
+
+- **Reset Start Date for Commits:**
+
+```sh
+curl -X POST "http://localhost:8080/reset_start_date?start_date=2019-01-01T00:00:00Z"
 ```
 
 ## Development
