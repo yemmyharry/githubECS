@@ -2,15 +2,15 @@ package commit
 
 import (
 	"encoding/json"
+	"fmt"
 	"githubECS/models"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 	"io"
 	"log"
 	"net/http"
+	"time"
 )
-
-const commitURL = "https://api.github.com/repos/"
 
 func WatchCommits(db *gorm.DB) {
 	var repos []models.Repository
@@ -23,7 +23,14 @@ func WatchCommits(db *gorm.DB) {
 }
 
 func checkCommits(name string, db *gorm.DB, repoID uint) {
-	resp, err := http.Get(commitURL + name + "/commits")
+	startTime, err := getStartDate(db)
+	if err != nil {
+		log.Printf("Error getting start date: %v", err)
+		startTime = time.Time{}
+	}
+
+	url := fmt.Sprintf("https://api.github.com/repos/%s/commits?since=%s", name, startTime.Format(time.RFC3339))
+	resp, err := http.Get(url)
 	if err != nil {
 		log.Println("Error fetching commits:", err)
 		return
@@ -66,4 +73,12 @@ func saveCommits(commits []models.PartialCommit, db *gorm.DB, repoID uint) {
 			log.Printf("Saved commit %+v", commit)
 		}
 	}
+}
+
+func getStartDate(db *gorm.DB) (time.Time, error) {
+	var config models.Config
+	if err := db.Where("key = ?", "start_date").First(&config).Error; err != nil {
+		return time.Time{}, err
+	}
+	return time.Parse(time.RFC3339, config.Value)
 }
