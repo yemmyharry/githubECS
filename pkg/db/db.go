@@ -11,6 +11,6 @@ func Initialize(dsn string) (*gorm.DB, error) {
 	if err != nil {
 		return nil, err
 	}
-	db.AutoMigrate(&models.Repository{}, &models.Commit{})
+	db.AutoMigrate(&models.Repository{}, &models.Commit{}, &models.Config{})
 	return db, nil
 }
