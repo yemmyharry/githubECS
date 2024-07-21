@@ -3,9 +3,11 @@ package handlers
 import (
 	"githubECS/internal/repository"
 	"githubECS/models"
+	"gorm.io/gorm/clause"
 	"net/http"
 	"net/url"
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -82,4 +84,35 @@ func GetTopRepositoriesHandler(c *gin.Context, db *gorm.DB) {
 		return
 	}
 	c.JSON(http.StatusOK, repos)
+}
+
+func ResetStartDateHandler(c *gin.Context, db *gorm.DB) {
+	startDate := c.Query("start_date")
+	if startDate == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Start date is required"})
+		return
+	}
+
+	parsedDate, err := time.Parse(time.RFC3339, startDate)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid start date format"})
+		return
+	}
+
+	if err := setStartDate(db, parsedDate); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update start date"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"status": "Start date updated", "start_date": startDate})
+}
+
+func setStartDate(db *gorm.DB, startDate time.Time) error {
+	config := models.Config{
+		Key:   "start_date",
+		Value: startDate.Format(time.RFC3339),
+	}
+	return db.Clauses(clause.OnConflict{
+		UpdateAll: true,
+	}).Create(&config).Error
 }
