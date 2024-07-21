@@ -5,7 +5,7 @@ import (
 	"githubECS/models"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"strconv"
@@ -35,7 +35,7 @@ func FindRepos(query string, db *gorm.DB) {
 
 	handleRateLimitHeaders(resp.Header)
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		log.Println("Error reading response body:", err)
 		return
