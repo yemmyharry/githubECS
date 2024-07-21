@@ -18,7 +18,7 @@ func setupTestDB() (*gorm.DB, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = db.AutoMigrate(&models.Repository{}, &models.Commit{})
+	err = db.AutoMigrate(&models.Repository{}, &models.Commit{}, &models.Config{})
 	if err != nil {
 		return nil, err
 	}
@@ -41,6 +41,9 @@ func setupTestRouter(db *gorm.DB) *gin.Engine {
 	})
 	r.GET("/top", func(c *gin.Context) {
 		handlers.GetTopRepositoriesHandler(c, db)
+	})
+	r.POST("/reset_start_date", func(c *gin.Context) {
+		handlers.ResetStartDateHandler(c, db)
 	})
 	return r
 }
@@ -166,4 +169,22 @@ func TestGetTopRepositories(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotEmpty(t, repos)
 	assert.Equal(t, repo2.FullName, repos[0].FullName)
+}
+
+func TestResetStartDate(t *testing.T) {
+	db, err := setupTestDB()
+	assert.NoError(t, err)
+
+	r := setupTestRouter(db)
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("POST", "/reset_start_date?start_date=2021-01-01T00:00:00Z", nil)
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+
+	var config models.Config
+	err = db.Where("key = ?", "start_date").First(&config).Error
+	assert.NoError(t, err)
+	assert.Equal(t, "2021-01-01T00:00:00Z", config.Value)
 }
