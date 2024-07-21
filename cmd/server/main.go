@@ -1,6 +1,7 @@
 package main
 
 import (
+	"githubECS/internal/scheduler"
 	"log"
 	"os"
 
@@ -17,6 +18,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	scheduler.StartScheduler(database)
 
 	router := routes.SetupRouter(database)
 	router.Run(":8080")
