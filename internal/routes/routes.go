@@ -29,5 +29,9 @@ func SetupRouter(db *gorm.DB) *gin.Engine {
 		handlers.GetTopRepositoriesHandler(c, db)
 	})
 
+	r.POST("/reset_start_date", func(c *gin.Context) {
+		handlers.ResetStartDateHandler(c, db)
+	})
+
 	return r
 }
