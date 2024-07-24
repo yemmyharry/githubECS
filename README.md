@@ -1,15 +1,19 @@
 # githubECS
 
-This project is a Golang service that discovers repositories matching user interests, saves them to a database, and monitors commits to these repositories.
+This project consists of three services to monitor GitHub repositories and commits:
+1. **Repo Discovery Service:** Fetches and saves metadata about repositories from a specified GitHub organization.
+2. **Commit Monitor Service:** Checks for new commits in the saved repositories periodically.
+3. **Commit Manager Service:** Manages the fetching of commits from a specified start date.
 
-## Features
+## Architecture
 
-- Discover GitHub repositories based on user interests.
-- Save discovered repositories to a PostgreSQL database.
-- Monitor and fetch new commits for saved repositories.
-- RESTful API endpoints to retrieve repository and commit information.
+The project is structured into three services that communicate via RabbitMQ:
 
-## Installation
+1. **Repo Discovery Service:** Fetches repository metadata from GitHub and saves it to the database.
+2. **Commit Monitor Service:** Periodically checks for new commits in the repositories.
+3. **Commit Manager Service:** Manages the fetching of commits based on a specified start date.
+
+## Setup
 
 ### Prerequisites
 
@@ -18,26 +22,62 @@ This project is a Golang service that discovers repositories matching user inter
 
 ### Environment Variables
 
-Create a `.env` file in the project root with the following variables:
+Create a `.env` file in the root of the project and add the following variables:
 
 ```
-DATABASE_URL=your_database_url
+DATABASE_URL=postgres://username:password@localhost:5432/githubecs
+RABBITMQ_URL=amqp://guest:guest@localhost:5672/
 ```
 
-### Build and Run
+### Building and Running the Services
 
-1. Clone the repository:
+## Locally
+Within the cmd directory is the entry points from which the three services can be started.
+
+## Using Docker
+
+1. Build the Docker images:
 
 ```sh
-git clone https://github.com/yemmyharry/githubECS.git
-cd githubECS
+docker-compose build
 ```
 
-2. Build and run the Docker containers:
+2. Run the services:
 
 ```sh
-docker-compose up --build
+docker-compose up
 ```
+
+This will start all services and the necessary RabbitMQ instance.
+
+## Endpoints
+
+### Repo Discovery Service
+
+- **POST /search**
+    - Fetches repositories from GitHub and saves them to the database.
+    - **Query Parameters:**
+        - `query` (string): The search query to filter repositories.
+
+- **GET /repositories/:full_name**
+    - Retrieves a repository by its full name.
+    - **Path Parameters:**
+        - `full_name` (string): The full name of the repository.
+
+- **GET /search**
+    - Searches repositories by language.
+    - **Query Parameters:**
+        - `language` (string): The language to filter repositories by.
+
+- **GET /top**
+    - Retrieves the top N repositories by stars count.
+    - **Query Parameters:**
+        - `n` (int): The number of repositories to retrieve.
+
+- **POST /reset_start_date**
+    - Resets the start date for fetching commits.
+    - **Request Body:**
+        - `start_date` (string): The new start date in RFC3339 format.
 
 ## Usage
 
@@ -49,51 +89,3 @@ docker-compose up --build
 - **Search Repositories by Language:** `GET /search?language=<language>`
 - **Get Top N Repositories by Stars Count:** `GET /top?n=<number>`
 - **Reset Start Date for Commits:** `POST /reset_start_date?start_date=<start_date>`
-
-### Example Requests
-
-- **Search Repositories:**
-
-```sh
-curl -X POST "http://localhost:8080/search?query=rust"
-```
-
-- **Get Repository by Full Name:**
-
-```sh
-curl -X GET "http://localhost:8080/repositories/test-repo"
-```
-
-- **Get Commits for a Repository:**
-
-```sh
-curl -X GET "http://localhost:8080/repositories/test-repo/commits"
-```
-
-- **Search Repositories by Language:**
-
-```sh
-curl -X GET "http://localhost:8080/search?language=go"
-```
-
-- **Get Top N Repositories by Stars Count:**
-
-```sh
-curl -X GET "http://localhost:8080/top?n=5"
-```
-
-- **Reset Start Date for Commits:**
-
-```sh
-curl -X POST "http://localhost:8080/reset_start_date?start_date=2019-01-01T00:00:00Z"
-```
-
-## Development
-
-### Running Tests
-
-To run the tests, use the following command:
-
-```sh
-go test ./...
-```
