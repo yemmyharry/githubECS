@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	searchURL         = "https://api.github.com/search/repositories?q="
+	searchURL         = "https://api.github.com/orgs/chromium/repos?q="
 	rateLimitResetURL = "https://api.github.com/rate_limit"
 )
 
@@ -41,15 +41,15 @@ func FindRepos(query string, db *gorm.DB) {
 		return
 	}
 
-	var result RepoSearchResult
+	var result []models.Repository
 	if err := json.Unmarshal(body, &result); err != nil {
 		log.Println("Error unmarshalling JSON:", err)
 		return
 	}
 
-	itemsToSave := result.Items
-	if len(itemsToSave) > 10 {
-		itemsToSave = itemsToSave[:10]
+	itemsToSave := result
+	if len(itemsToSave) > 30 {
+		itemsToSave = itemsToSave[:30]
 	}
 
 	saveRepos(itemsToSave, db)
@@ -57,6 +57,7 @@ func FindRepos(query string, db *gorm.DB) {
 
 func saveRepos(repos []models.Repository, db *gorm.DB) {
 	for _, repo := range repos {
+
 		repository := models.Repository{
 			FullName:        repo.FullName,
 			Description:     repo.Description,
