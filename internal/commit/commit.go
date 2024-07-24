@@ -18,7 +18,7 @@ func WatchCommits(db *gorm.DB) {
 
 	for _, repo := range repos {
 		log.Printf("Checking commits for repo: %s", repo.FullName)
-		checkCommits(repo.FullName, db, repo.ID)
+		checkCommits(*repo.FullName, db, repo.ID)
 	}
 }
 
