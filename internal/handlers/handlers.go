@@ -1,19 +1,34 @@
 package handlers
 
 import (
+	"encoding/json"
+	"githubECS/internal/commit"
 	"githubECS/internal/repository"
 	"githubECS/models"
-	"gorm.io/gorm/clause"
+	"log"
 	"net/http"
 	"net/url"
 	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/streadway/amqp"
 	"gorm.io/gorm"
 )
 
-func GetRepositoryHandler(c *gin.Context, db *gorm.DB) {
+func getDB(c *gin.Context) *gorm.DB {
+	return c.MustGet("db").(*gorm.DB)
+}
+
+func SearchHandler(c *gin.Context) {
+	db := getDB(c)
+	query := c.Query("query")
+	repository.FindRepos(query, db)
+	c.JSON(http.StatusOK, gin.H{"status": "OK"})
+}
+
+func GetRepositoryHandler(c *gin.Context) {
+	db := getDB(c)
 	full_name := c.Param("full_name")
 	full_name, err := url.QueryUnescape(full_name)
 	if err != nil {
@@ -33,7 +48,8 @@ func GetRepositoryHandler(c *gin.Context, db *gorm.DB) {
 	c.JSON(http.StatusOK, repos)
 }
 
-func GetCommitsHandler(c *gin.Context, db *gorm.DB) {
+func GetCommitsHandler(c *gin.Context) {
+	db := getDB(c)
 	full_name := c.Param("full_name")
 	full_name, err := url.QueryUnescape(full_name)
 	if err != nil {
@@ -55,13 +71,8 @@ func GetCommitsHandler(c *gin.Context, db *gorm.DB) {
 	c.JSON(http.StatusOK, commits)
 }
 
-func SearchHandler(c *gin.Context, db *gorm.DB) {
-	query := c.Query("query")
-	repository.FindRepos(query, db)
-	c.JSON(http.StatusOK, gin.H{"status": "OK"})
-}
-
-func SearchByLanguageHandler(c *gin.Context, db *gorm.DB) {
+func SearchByLanguageHandler(c *gin.Context) {
+	db := getDB(c)
 	language := c.Query("language")
 	var repos []models.Repository
 	if err := db.Where("LOWER(language) = ?", language).Find(&repos).Error; err != nil {
@@ -71,7 +82,8 @@ func SearchByLanguageHandler(c *gin.Context, db *gorm.DB) {
 	c.JSON(http.StatusOK, repos)
 }
 
-func GetTopRepositoriesHandler(c *gin.Context, db *gorm.DB) {
+func GetTopRepositoriesHandler(c *gin.Context) {
+	db := getDB(c)
 	nStr := c.Query("n")
 	n, err := strconv.Atoi(nStr)
 	if err != nil || n <= 0 {
@@ -86,7 +98,8 @@ func GetTopRepositoriesHandler(c *gin.Context, db *gorm.DB) {
 	c.JSON(http.StatusOK, repos)
 }
 
-func ResetStartDateHandler(c *gin.Context, db *gorm.DB) {
+func ResetStartDateHandler(c *gin.Context) {
+	db := getDB(c)
 	startDate := c.Query("start_date")
 	if startDate == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Start date is required"})
@@ -99,7 +112,7 @@ func ResetStartDateHandler(c *gin.Context, db *gorm.DB) {
 		return
 	}
 
-	if err := setStartDate(db, parsedDate); err != nil {
+	if err := models.SetStartDate(db, parsedDate); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update start date"})
 		return
 	}
@@ -107,12 +120,36 @@ func ResetStartDateHandler(c *gin.Context, db *gorm.DB) {
 	c.JSON(http.StatusOK, gin.H{"status": "Start date updated", "start_date": startDate})
 }
 
-func setStartDate(db *gorm.DB, startDate time.Time) error {
-	config := models.Config{
-		Key:   "start_date",
-		Value: startDate.Format(time.RFC3339),
+func StartCommitManagerConsumer(db *gorm.DB, rabbitCh *amqp.Channel) {
+	queueName := "commit_manager_queue"
+	msgs, err := rabbitCh.Consume(
+		queueName,
+		"",
+		true,
+		false,
+		false,
+		false,
+		nil,
+	)
+	if err != nil {
+		log.Fatalf("Failed to register a consumer: %v", err)
 	}
-	return db.Clauses(clause.OnConflict{
-		UpdateAll: true,
-	}).Create(&config).Error
+
+	forever := make(chan bool)
+
+	go func() {
+		for d := range msgs {
+			var req struct {
+				Repo string `json:"repo"`
+			}
+			if err := json.Unmarshal(d.Body, &req); err != nil {
+				log.Printf("Error unmarshalling JSON: %v", err)
+				continue
+			}
+			commit.WatchCommits(db)
+		}
+	}()
+
+	log.Printf("Waiting for messages. To exit press CTRL+C")
+	<-forever
 }
