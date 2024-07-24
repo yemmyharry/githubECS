@@ -1,15 +1,41 @@
 package scheduler
 
 import (
-	"github.com/go-co-op/gocron"
-	"githubECS/internal/commit"
-	"gorm.io/gorm"
+	"encoding/json"
+	"githubECS/rabbitmq"
+	"log"
 	"time"
+
+	"github.com/go-co-op/gocron"
+	"github.com/streadway/amqp"
+	"gorm.io/gorm"
 )
 
-func StartScheduler(db *gorm.DB) {
-	scheduler := gocron.NewScheduler(time.UTC)
+func StartCommitMonitor(db *gorm.DB, rabbitCh *amqp.Channel) {
+	s := gocron.NewScheduler(time.UTC)
 
-	scheduler.Every(1).Hours().Do(func() { commit.WatchCommits(db) })
-	scheduler.StartAsync()
+	s.Every(1).Hours().Do(func() {
+		var repos []string
+		db.Raw("SELECT full_name FROM repositories").Scan(&repos)
+
+		for _, repo := range repos {
+			notifyCommitManager(repo, rabbitCh)
+		}
+	})
+
+	s.StartBlocking()
+}
+
+func notifyCommitManager(repo string, rabbitCh *amqp.Channel) {
+	queueName := "commit_manager_queue"
+	body, err := json.Marshal(map[string]string{"repo": repo})
+	if err != nil {
+		log.Printf("Error marshalling JSON: %v", err)
+		return
+	}
+
+	err = rabbitmq.PublishMessage(rabbitCh, queueName, body)
+	if err != nil {
+		log.Printf("Error publishing message to RabbitMQ: %v", err)
+	}
 }
